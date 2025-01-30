@@ -1,0 +1,96 @@
+Option Explicit
+Option Base 1
+
+Function CallPut_BS(Spot As Double, Strike As Double, Volatility As Double, Rate As Double, _
+                    Dividend As Double, Expiry As Double, Optional isPut As Boolean = False)
+
+   
+ 
+    Dim d1 As Double, d2 As Double, Nd1 As Double, Nd2 As Double
+    Dim mult As Double, CallPutValue As Double
+    
+    d1 = (VBA.Log(Spot / Strike) + (Rate - Dividend + 0.5 * Volatility * Volatility) * Expiry) / (Volatility * VBA.Sqr(Expiry))
+    d2 = d1 - Volatility * VBA.Sqr(Expiry)
+    
+    mult = 1
+    If (isPut = True) Then
+        mult = -1
+    End If
+    
+    Nd1 = Application.WorksheetFunction.Norm_S_Dist(mult * d1, True)
+    Nd2 = Application.WorksheetFunction.Norm_S_Dist(mult * d2, True)
+    
+    CallPutValue = mult * ((VBA.Exp(-Dividend * Expiry) * Spot * Nd1) - (VBA.Exp(-Rate * Expiry) * Strike * Nd2))
+
+    CallPut_BS = CallPutValue
+End Function
+Function CallPut_MC(Spot As Double, Strike As Double, Volatility As Double, Rate As Double, _
+                    Dividend As Double, Expiry As Double, nbSimulMC As Long, Optional isPut As Boolean = False) As Double()
+
+    Dim mult As Double, SpotFwdMC As Double
+    Dim iSimul As Long, simulMC() As Double
+    Dim priceMC As Double, varMC As Double, sdMC As Double
+    Dim z As Double, IC_min As Double, IC_max As Double
+    Dim resTab(8) As Double ' Inclure le temps d'exécution
+    Dim tStart As Double, tEnd As Double ' Variables pour le timer
+    Dim diffclo As Double, IC As Double
+    Dim CallBS As Double
+    
+    
+    ' Début du timer
+    tStart = Timer
+    
+    ' Récupération de la valeur Black-Scholes dans Excel
+    CallBS = ThisWorkbook.Worksheets("CallPut").Cells(9, 5).Value
+
+    ' Définir mult en fonction de l'option (call/put)
+    mult = 1
+    If isPut = True Then
+        mult = -1
+        CallBS = ThisWorkbook.Worksheets("CallPut").Cells(10, 5).Value
+    End If
+    
+    ' Initialisation des simulations
+    ReDim simulMC(1 To nbSimulMC)
+    
+    ' Boucle Monte-Carlo
+    For iSimul = 1 To nbSimulMC
+        z = Application.WorksheetFunction.Norm_S_Inv(VBA.Rnd())
+        SpotFwdMC = Spot * VBA.Exp((Rate - Dividend - 0.5 * Volatility * Volatility) * Expiry + _
+                                   Volatility * VBA.Sqr(Expiry) * z)
+        simulMC(iSimul) = Application.WorksheetFunction.Max(mult * (SpotFwdMC - Strike), 0)
+    Next iSimul
+
+    ' Calcul du prix et de la variance
+    priceMC = VBA.Exp(-Rate * Expiry) * Application.WorksheetFunction.Average(simulMC)
+    varMC = VBA.Exp(-2 * Rate * Expiry) * Application.WorksheetFunction.Var(simulMC)
+    sdMC = VBA.Sqr(varMC)
+
+    ' Calcul de l'intervalle de confiance (95%)
+    z = 1.96
+    IC_min = priceMC - z * sdMC / VBA.Sqr(nbSimulMC)
+    IC_max = priceMC + z * sdMC / VBA.Sqr(nbSimulMC)
+    IC = IC_max - IC_min
+    
+    ' Différence avec Black-Scholes
+    ' Assurez-vous que CallBS soit défini si utilisé (remplacez par une valeur test ici si besoin)
+    diffclo = CallBS - priceMC
+    
+
+    ' Fin du timer
+    tEnd = Timer
+
+    ' Stocker les résultats
+    resTab(1) = priceMC          ' Prix Monte-Carlo
+    resTab(2) = varMC            ' Variance Monte-Carlo
+    resTab(3) = 0          ' Différence avec Black-Scholes
+    resTab(4) = 1                ' Niveau de confiance (fixé à 95%)
+    resTab(5) = IC_min           ' Intervalle de confiance (min)
+    resTab(6) = IC_max           ' Intervalle de confiance (max)
+    resTab(7) = IC               ' Largeur de l'intervalle de confiance
+    resTab(8) = tEnd - tStart    ' Temps d'exécution en secondes
+
+    ' Retourner le tableau
+    CallPut_MC = resTab
+End Function
+
