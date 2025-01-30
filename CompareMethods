@@ -1,0 +1,63 @@
+Sub CompareMethods()
+    Dim Spot As Double, Strike As Double, Volatility As Double, Rate As Double
+    Dim Dividend As Double, Expiry As Double, nbSimulMC As Long
+    Dim resClassic() As Double, resAntithetic() As Double
+    Dim c As Double
+    c = ThisWorkbook.Worksheets("CallPut").Cells(14, 11).Value
+
+
+    ' Paramètres
+    Spot = ThisWorkbook.Worksheets("CallPut").Cells(1, 5).Value
+' Spot très faible par rapport au Strike (option hors de la monnaie)
+    Strike = ThisWorkbook.Worksheets("CallPut").Cells(2, 5).Value
+    Volatility = ThisWorkbook.Worksheets("CallPut").Cells(3, 5).Value
+    Rate = ThisWorkbook.Worksheets("CallPut").Cells(4, 5).Value
+    Dividend = ThisWorkbook.Worksheets("CallPut").Cells(5, 5).Value
+    Expiry = ThisWorkbook.Worksheets("CallPut").Cells(6, 5).Value
+    nbSimulMC = ThisWorkbook.Worksheets("CallPut").Cells(7, 5).Value
+
+    ' Méthode classique
+    resClassic = CallPut_MC(Spot, Strike, Volatility, Rate, Dividend, Expiry, nbSimulMC, True)
+
+    ' Méthode antithétique
+    resAntithetic = CallPut_MC_Antithetic(Spot, Strike, Volatility, Rate, Dividend, Expiry, nbSimulMC, True)
+
+    ' Résultats
+    Debug.Print "Méthode classique :"
+    Debug.Print "Prix estimé : " & resClassic(1)
+    Debug.Print "Variance : " & resClassic(2)
+    Debug.Print "IC : " & c
+    Debug.Print "Temps éxecution : " & (resClassic(8))
+
+
+    Debug.Print "Méthode antithétique :"
+    Debug.Print "Prix estimé : " & resAntithetic(1)
+    Debug.Print "Variance : " & resAntithetic(2)
+    Debug.Print "IC : " & resAntithetic(7)
+    Debug.Print "Temps éxecution : " & (resAntithetic(8))
+    
+    
+' Création du message pour la méthode classique
+Dim msgClassic As String
+msgClassic = "Méthode classique :" & vbCrLf & _
+             "Prix estimé : " & Format(resClassic(1), "0.0000") & vbCrLf & _
+             "Variance : " & Format(resClassic(2), "0.0000") & vbCrLf & _
+             "Intervalle de confiance : " & Format(c, "0.0000") & vbCrLf & _
+             "Temps éxecution : " & Format(resClassic(8), "0.0000") & vbCrLf
+
+
+' Création du message pour la méthode antithétique
+Dim msgAntithetic As String
+msgAntithetic = "Méthode antithétique :" & vbCrLf & _
+                "Prix estimé : " & Format(resAntithetic(1), "0.0000") & vbCrLf & _
+                "Variance : " & Format(resAntithetic(2), "0.0000") & vbCrLf & _
+                "Intervalle de confiance : " & Format(resAntithetic(7), "0.0000") & vbCrLf & _
+                "Temps éxecution : " & Format(resAntithetic(8), "0.0000") & vbCrLf
+
+' Affichage des messages
+MsgBox msgClassic, vbInformation, "Résultats - Méthode Classique"
+MsgBox msgAntithetic, vbInformation, "Résultats - Méthode Antithétique"
+
+
+End Sub
+
